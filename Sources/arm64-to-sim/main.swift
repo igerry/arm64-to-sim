@@ -55,42 +55,15 @@ enum Transmogrifier {
       return try! handle.read(upToCount: Int(loadCommandPeekData!.commandSize))!
     }
 
+    // discard 8 empty bytes that should exist here
+    let bytesToDiscard = abs(MemoryLayout<build_version_command>.stride - MemoryLayout<version_min_command>.stride)
+    _ = handle.readData(ofLength: bytesToDiscard)
+
     let programData = try! handle.readToEnd()!
 
     try! handle.close()
 
     return (headerData, loadCommandsData, programData)
-  }
-
-  private static func updateSegment64(_ data: Data, _ offset: UInt32) -> Data {
-    // decode both the segment_command_64 and the subsequent section_64s
-    var segment: segment_command_64 = data.asStruct()
-
-    let sections: [section_64] = (0..<Int(segment.nsects)).map { index in
-      let offset = MemoryLayout<segment_command_64>.stride + index * MemoryLayout<section_64>.stride
-      return data.asStruct(fromByteOffset: offset)
-    }
-
-    // shift segment information by the offset
-    segment.fileoff += UInt64(offset)
-    segment.filesize += UInt64(offset)
-    segment.vmsize += UInt64(offset)
-
-    let offsetSections = sections.map { section -> section_64 in
-      var section = section
-      section.offset += UInt32(offset)
-      section.reloff += section.reloff > 0 ? UInt32(offset) : 0
-      return section
-    }
-
-    var datas = [Data]()
-    datas.append(Data(bytes: &segment, count: MemoryLayout<segment_command_64>.stride))
-    datas.append(contentsOf: offsetSections.map { section in
-      var section = section
-      return Data(bytes: &section, count: MemoryLayout<section_64>.stride)
-    })
-
-    return datas.merge()
   }
 
   private static func updateVersionMin(_ data: Data, _ offset: UInt32) -> Data {
@@ -104,19 +77,6 @@ enum Transmogrifier {
     return Data(bytes: &command, count: MemoryLayout<build_version_command>.stride)
   }
 
-  private static func updateDataInCode(_ data: Data, _ offset: UInt32) -> Data {
-    var command: linkedit_data_command = data.asStruct()
-    command.dataoff += offset
-    return Data(bytes: &command, count: data.commandSize)
-  }
-
-  private static func updateSymTab(_ data: Data, _ offset: UInt32) -> Data {
-    var command: symtab_command = data.asStruct()
-    command.stroff += offset
-    command.symoff += offset
-    return Data(bytes: &command, count: data.commandSize)
-  }
-
   static func processBinary(atPath path: String) {
     let (headerData, loadCommandsData, programData) = readBinary(atPath: path)
 
@@ -127,14 +87,8 @@ enum Transmogrifier {
     let editedCommandsData = loadCommandsData
       .map { (lc) -> Data in
         switch lc.loadCommand {
-        case UInt32(LC_SEGMENT_64):
-          return updateSegment64(lc, offset)
         case UInt32(LC_VERSION_MIN_IPHONEOS):
           return updateVersionMin(lc, offset)
-        case UInt32(LC_DATA_IN_CODE), UInt32(LC_LINKER_OPTIMIZATION_HINT):
-          return updateDataInCode(lc, offset)
-        case UInt32(LC_SYMTAB):
-          return updateSymTab(lc, offset)
         case UInt32(LC_BUILD_VERSION):
           fatalError("This arm64 binary already contains an LC_BUILD_VERSION load command!")
         default:
