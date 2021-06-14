@@ -66,10 +66,10 @@ enum Transmogrifier {
     return (headerData, loadCommandsData, programData)
   }
 
-  private static func updateVersionMin(_ data: Data, _ offset: UInt32) -> Data {
+  private static func updateVersionMin(_ data: Data, _ offset: UInt32, _ platform: UInt32) -> Data {
     var command = build_version_command(cmd: UInt32(LC_BUILD_VERSION),
                                         cmdsize: UInt32(MemoryLayout<build_version_command>.stride),
-                                        platform: UInt32(PLATFORM_IOSSIMULATOR),
+                                        platform: platform,
                                         minos: 13 << 16 | 0 << 8 | 0,
                                         sdk: 13 << 16 | 0 << 8 | 0,
                                         ntools: 0)
@@ -88,7 +88,9 @@ enum Transmogrifier {
       .map { (lc) -> Data in
         switch lc.loadCommand {
         case UInt32(LC_VERSION_MIN_IPHONEOS):
-          return updateVersionMin(lc, offset)
+          return updateVersionMin(lc, offset, UInt32(PLATFORM_IOSSIMULATOR))
+        case UInt32(LC_VERSION_MIN_TVOS):
+          return updateVersionMin(lc, offset, UInt32(PLATFORM_TVOSSIMULATOR))
         case UInt32(LC_BUILD_VERSION):
           fatalError("This arm64 binary already contains an LC_BUILD_VERSION load command!")
         default:
