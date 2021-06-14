@@ -1,3 +1,4 @@
+import ArgumentParser
 import Foundation
 import MachO
 
@@ -157,5 +158,17 @@ enum Transmogrifier {
   }
 }
 
-let binaryPath = CommandLine.arguments[1]
-Transmogrifier.processBinary(atPath: binaryPath)
+struct Arm64ToSim: ParsableCommand {
+  static let configuration = CommandConfiguration(
+    abstract: "A simple command-line tool for hacking native ARM64 binaries to run on the ARM64 Simulator."
+  )
+
+  @Argument(help: "Path to framework's binary, eg. MyFramework.framework/MyFramework")
+  var path: String
+
+  func run() throws {
+    Transmogrifier.processBinary(atPath: path)
+  }
+}
+
+Arm64ToSim.main()
