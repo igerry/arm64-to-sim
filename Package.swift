@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.4
 import PackageDescription
 
 let package = Package(
@@ -7,9 +7,24 @@ let package = Package(
     .macOS(.v11),
   ],
   products: [
-    .executable(name: "arm64-to-sim", targets: ["arm64-to-sim"]),
+    .library(
+      name: "Arm64ToSim",
+      targets: ["Arm64ToSim"]
+    ),
+    .executable(
+      name: "arm64-to-sim",
+      targets: ["arm64-to-sim"]
+    ),
   ],
   targets: [
-    .target(name: "arm64-to-sim"),
+    .target(
+      name: "Arm64ToSim"
+    ),
+    .executableTarget(
+      name: "arm64-to-sim",
+      dependencies: [
+        .target(name: "Arm64ToSim"),
+      ]
+    ),
   ]
 )
