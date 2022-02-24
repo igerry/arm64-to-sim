@@ -111,7 +111,7 @@ enum Transmogrifier {
         case UInt32(LC_VERSION_MIN_TVOS):
           return updateVersionMin(lc, offset, UInt32(PLATFORM_TVOSSIMULATOR))
         case UInt32(LC_BUILD_VERSION):
-          throw LcBuildVersionCommandAlreadyExistError()
+          return lc
         default:
           return lc
         }
